@@ -1,2 +1,4 @@
 *~
+*.pyc
 access.log
+build

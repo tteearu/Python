@@ -2,7 +2,11 @@ import os
 import argparse
 import gzip
 import urllib
+import codecs
 import GeoIP
+from lxml import etree
+from lxml.cssselect import CSSSelector
+from jinja2 import Environment, FileSystemLoader # This it the templating engine we will use
 
 parser = argparse.ArgumentParser(description='Apache2 log parser')
 parser.add_argument("--path", help="Path to Apache2 log files", default="/var/log/apache2")
@@ -29,6 +33,7 @@ for filename in os.listdir(root):
         print "Skipping unknown file:", filename
         continue
     if filename.endswith(".gz"):
+        continue
         fh = gzip.open(os.path.join(root, filename))   
     else: 
         fh = open(os.path.join(root, filename))   
@@ -69,6 +74,25 @@ for filename in os.listdir(root):
                     break
         except ValueError:
             pass
+
+document =  etree.parse(open('templates/BlankMap-World6.svg'))
+print countries
+for country_code, hits in countries.items():
+    max_hits = max(countries.values())
+    print"country with max ammount of hits : ", max_hits;
+     
+    if not country_code: continue #skip localhost,satelite phones etc
+    print country_code, hex(hits * 255 / max_hits)[2:] #2: skips the hexadecimal number
+    sel = CSSSelector("#" + country_code.lower())
+    for j in sel(document):
+        j.set("style", "fill:hsl(%d, 80%%, 60%%)"%(120-hits*120/max_hits))
+        # Remove styling from children
+        for i in j.iterfind("{http://www.w3.org/2000/svg}path"):
+            i.attrib.pop("class", "")
+
+with open("buld/highlighted.svg", "w") as fh:
+    fh.write(etree.tostring(document))
+
  
 total = sum(d.values())
 print
@@ -131,3 +155,16 @@ for username, hits in results [0:5]:
             mode, inode, devide, nlink, uid, gid, size, atime, mtime, ctime = os.stat(filename)
    #         print filename, humanize(size)
     print username, "==>", humanize(hits)
+    
+    
+users = sorted(users.items(), key = lambda item:item[1], reverse=True)
+ 
+env = Environment(
+    
+    loader=FileSystemLoader(os.path.dirname(__file__)),
+    trim_blocks=True)
+with codecs.open("build/output.html", "w", encoding="utf-8") as fh:    
+    fh.write(env.get_template("templates/index.html").render(locals()))
+    # locals() is a dict which contains all locally defined variables ;)
+ 
+#os.system("x-www-browser file://" + os.path.realpath("output.html") + " &")
